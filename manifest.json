@@ -1,0 +1,64 @@
+{
+  "manifest_version": 3,
+  "name": "宇航工具箱",
+  "version": "1.8.0",
+  "description": "一个多功能Chrome工具箱，支持JSON转换、文本翻译、内容总结和测试数据生成",
+  "action": {
+    "default_title": "打开宇航工具箱侧边栏",
+    "default_icon": {
+      "16": "images/astronaut_16.png",
+      "32": "images/astronaut_32.png",
+      "48": "images/astronaut_48.png",
+      "128": "images/astronaut_128.png"
+    }
+  },
+  "icons": {
+    "16": "images/astronaut_16.png",
+    "32": "images/astronaut_32.png",
+    "48": "images/astronaut_48.png",
+    "128": "images/astronaut_128.png"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "permissions": [
+    "sidePanel",
+    "activeTab",
+    "scripting",
+    "storage",
+    "contextMenus",
+    "tabs",
+    "webRequest",
+    "proxy",
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
+    "background",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://api.deepseek.com/*",
+    "https://maas-api.cn-huabei-1.xf-yun.com/*",
+    "http://console.devops.iflytek.com/*",
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module",
+    "persistent": false
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["images/*", "lib/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
+} 

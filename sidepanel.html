@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>宇航工具箱</title>
+  <!-- 预加载关键资源 -->
+  <link rel="preload" href="styles.css" as="style">
+  <link rel="preload" href="api-service.js" as="script">
+  <link rel="preload" href="sidepanel.js" as="script">
+  <link rel="stylesheet" href="styles.css">
+  <!-- 本地库引用 -->
+  <!-- FontAwesome暂时禁用，避免字体文件缺失错误 -->
+  <!-- <link rel="stylesheet" href="lib/fontawesome.min.css"> -->
+  <script src="lib/chart.min.js"></script>
+  <script src="lib/xlsx.full.min.js"></script>
+  <!-- MD转Word所需库 -->
+  <script src="lib/marked.min.js"></script>
+  <script src="lib/docx.min.js"></script>
+  <script src="lib/FileSaver.min.js"></script>
+  <!-- 库初始化脚本 -->
+  <script src="lib-init.js"></script>
+</head>
+<body>
+  <!-- 错误消息提示 -->
+  <div id="errorMessage" class="error-message"></div>
+  
+  <!-- 头部区域 -->
+  <header class="header">
+    <div class="header-title">
+      <img src="images/astronaut_32.png" alt="宇航工具箱" class="header-icon">
+      <h1>宇航工具箱</h1>
+    </div>
+    <div class="header-actions">
+      <!-- 添加模型选择下拉框 -->
+      <div class="model-selector">
+        <select id="headerModelSelect" class="header-model-select">
+          <!-- 模型选项将动态生成 -->
+        </select>
+      </div>
+      <button id="settingsButton" class="settings-button">
+        <i class="fas fa-cog"></i>
+      </button>
+    </div>
+  </header>
+  
+  <!-- 功能标签页 -->
+  <div class="tabs">
+    <button class="tab-button active" data-tab="json-tab">转JSON</button>
+    <button class="tab-button" data-tab="translate-tab">翻译</button>
+    <button class="tab-button" data-tab="summarize-tab">总结</button>
+    <button class="tab-button" data-tab="testdata-tab">测试数据</button>
+    <button class="tab-button" data-tab="excel-tab">工时分析</button>
+    <button class="tab-button" data-tab="md2word-tab">MD转Word</button>
+    <button class="tab-button" data-tab="proxy-tab">代理</button>
+    <button class="tab-button" data-tab="version-tab">版本采集</button>
+  </div>
+  
+  <!-- 转JSON功能区 -->
+  <div id="json-tab" class="tab-content active">
+    <div class="input-area">
+      <label for="jsonInput" class="input-label">输入文本</label>
+      <textarea id="jsonInput" class="text-input" placeholder="请输入要转换为JSON的文本..."></textarea>
+    </div>
+    
+    <button id="convertJsonButton" class="action-button">转换为JSON</button>
+    
+    <div class="result-area">
+      <div id="jsonResult" class="json-result">
+        <span class="result-placeholder">JSON结果将在这里显示...</span>
+      </div>
+      <button id="copyJsonButton" class="copy-button" title="复制结果">
+        <i class="fas fa-copy"></i>
+      </button>
+      <div id="jsonExecutionTime" class="execution-time"></div>
+    </div>
+  </div>
+  
+  <!-- 翻译功能区 -->
+  <div id="translate-tab" class="tab-content">
+    <div class="selected-text" id="translateInput" contenteditable="true" data-placeholder="选中页面文本或在此输入要翻译的内容...">
+      <span class="selected-text-placeholder">选中页面文本或在此输入要翻译的内容...</span>
+    </div>
+    
+    <div class="language-tabs">
+      <div class="language-tab active" data-lang="zh">中文</div>
+      <div class="language-tab" data-lang="en">英文</div>
+      <div class="language-tab" data-lang="ja">日文</div>
+      <div class="language-tab" data-lang="ko">韩文</div>
+      <div class="language-tab" data-lang="fr">法文</div>
+    </div>
+    
+    <button id="translateButton" class="action-button">开始翻译</button>
+    
+    <div class="result-area">
+      <div id="translateResult">
+        <span class="result-placeholder">翻译结果将在这里显示...</span>
+      </div>
+      <button id="copyTranslateButton" class="copy-button" title="复制结果">
+        <i class="fas fa-copy"></i>
+      </button>
+      <div id="translateExecutionTime" class="execution-time"></div>
+    </div>
+  </div>
+  
+  <!-- 总结功能区 -->
+  <div id="summarize-tab" class="tab-content">
+    <div class="selected-text" id="summarizeInput" contenteditable="true" data-placeholder="选中页面文本或在此输入要总结的内容...">
+      <span class="selected-text-placeholder">选中页面文本或在此输入要总结的内容...</span>
+    </div>
+    
+    <button id="summarizeButton" class="action-button">开始总结</button>
+    
+    <div class="result-area">
+      <div id="summarizeResult">
+        <span class="result-placeholder">总结结果将在这里显示...</span>
+      </div>
+      <button id="copySummarizeButton" class="copy-button" title="复制结果">
+        <i class="fas fa-copy"></i>
+      </button>
+      <div id="summarizeExecutionTime" class="execution-time"></div>
+    </div>
+  </div>
+  
+  <!-- 测试数据功能区 -->
+  <div id="testdata-tab" class="tab-content">
+    <div class="setting-group">
+      <label class="input-label">生成中国用户测试数据</label>
+      <p class="setting-description">一键生成测试用户数据，包含姓名、手机号和身份证号</p>
+    </div>
+    
+    <div class="testdata-options">
+      <div class="testdata-count">
+        <label for="dataCount" class="input-label">生成数量</label>
+        <input type="number" id="dataCount" min="1" max="50" value="10" class="data-count-input">
+      </div>
+    </div>
+    
+    <button id="generateTestDataButton" class="action-button">生成测试数据</button>
+    
+    <div class="result-area testdata-result-area">
+      <div id="testDataResult" class="testdata-result">
+        <span class="result-placeholder">测试数据将在这里显示...</span>
+      </div>
+      <button id="copyTestDataButton" class="copy-button" title="复制结果">
+        <i class="fas fa-copy"></i>
+      </button>
+      <div id="testDataExecutionTime" class="execution-time"></div>
+    </div>
+  </div>
+  
+  <!-- Excel分析功能区 -->
+  <div id="excel-tab" class="tab-content">
+    <div class="setting-group">
+      <label class="input-label">工时分析</label>
+      <p class="setting-description">上传Excel文件，分析团队成员的工作情况</p>
+    </div>
+    
+    <div class="excel-upload">
+      <input type="file" id="excelFileInput" accept=".xlsx,.xls" class="file-input">
+      <button id="uploadExcelButton" class="action-button">
+        <i class="fas fa-upload"></i> 上传Excel文件
+      </button>
+    </div>
+    
+    <div class="result-area excel-result-area">
+      <div id="excelAnalysisResult" class="excel-result">
+        <div class="result-section workload-section">
+          <h3>一、个人工作量和时间管理</h3>
+          <div id="workloadChart" class="chart-container">
+            <canvas></canvas>
+          </div>
+          <div id="timeVarianceChart" class="chart-container">
+            <canvas></canvas>
+          </div>
+        </div>
+        
+        <div class="result-section task-type-section">
+          <h3>二、任务类型统计</h3>
+          <div id="taskTypeChart" class="chart-container">
+            <canvas></canvas>
+          </div>
+        </div>
+        
+        <div class="result-section personal-summary-section">
+          <h3>三、个人总结</h3>
+          <div id="personalSummary" class="summary-container"></div>
+        </div>
+      </div>
+      <button id="exportExcelButton" class="action-button" style="display: none;">
+        <i class="fas fa-download"></i> 导出分析报告
+      </button>
+      <div id="excelExecutionTime" class="execution-time"></div>
+    </div>
+  </div>
+  
+  <!-- MD转Word功能区 -->
+  <div id="md2word-tab" class="tab-content">
+    <div class="setting-group">
+      <label class="input-label">Markdown转Word文档</label>
+      <p class="setting-description">将Markdown文件转换为Word文档格式，支持表格、图片、代码块等元素</p>
+    </div>
+    
+    <!-- 文件上传区域 -->
+    <div class="md-upload">
+      <input type="file" id="mdFileInput" accept=".md,.markdown" class="file-input">
+      <button id="uploadMdButton" class="action-button">
+        <i class="fas fa-upload"></i> 选择MD文件
+      </button>
+    </div>
+    
+    <!-- 文本输入区域（备选方案） -->
+    <div class="input-area">
+      <label for="mdInput" class="input-label">或直接输入Markdown内容</label>
+      <textarea id="mdInput" class="text-input" placeholder="粘贴Markdown内容..."></textarea>
+    </div>
+    
+    <!-- 转换选项 -->
+    <div class="conversion-options">
+      <div class="option-group">
+        <label class="input-label">转换选项</label>
+        <div class="checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="includeImages" checked>
+            <span>包含图片</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="includeCodeBlocks" checked>
+            <span>保留代码块格式</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="includeTables" checked>
+            <span>转换表格</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="includeToc" checked>
+            <span>生成目录</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    
+    <button id="convertMdButton" class="action-button">开始转换</button>
+    
+    <!-- 结果区域 -->
+    <div class="result-area md-result-area">
+      <div id="mdConversionResult" class="md-result">
+        <span class="result-placeholder">转换结果将在这里显示...</span>
+      </div>
+      <button id="downloadWordButton" class="action-button" style="display: none;">
+        <i class="fas fa-download"></i> 下载Word文档
+      </button>
+      <div id="mdExecutionTime" class="execution-time"></div>
+    </div>
+  </div>
+  
+  <!-- 代理功能区 -->
+  <div id="proxy-tab" class="tab-content">
+    <div class="setting-group">
+      <label class="input-label">网络代理设置</label>
+      <p class="setting-description">配置网络代理和URL拦截规则，支持请求重定向和代理转发</p>
+    </div>
+    
+    <!-- 拦截规则设置 -->
+    <div class="proxy-config">
+      <div class="config-row">
+        <label for="interceptUrl" class="config-label">拦截URL:</label>
+        <input type="text" id="interceptUrl" class="proxy-input" placeholder="/gateway/*" value="/gateway/">
+        <div class="switch-container">
+          <label class="switch">
+            <input type="checkbox" id="isRuleUse">
+            <span class="slider">
+              <span class="switch-text on">开</span>
+              <span class="switch-text off">关</span>
+            </span>
+          </label>
+        </div>
+        <button id="saveProxyConfig" class="save-button">保存</button>
+      </div>
+      
+      <div class="config-row">
+        <label for="proxyIp" class="config-label">代理地址:</label>
+        <input type="text" id="proxyIp" class="proxy-input" placeholder="172.30.12.205" value="">
+        <label class="checkbox-label">
+          <input type="checkbox" id="proxyEnable" checked>
+          <span>应用代理</span>
+        </label>
+      </div>
+    </div>
+    
+    <!-- 规则管理按钮 -->
+    <div class="rule-actions">
+      <button id="addRule" class="action-button">
+        <i class="fas fa-plus"></i> 增加规则
+      </button>
+      <button id="deleteRule" class="action-button danger">
+        <i class="fas fa-trash"></i> 删除规则
+      </button>
+      <button id="testProxy" class="action-button" style="background: #6b46c1;">
+        <i class="fas fa-vial"></i> 测试规则
+      </button>
+      <button id="clearProxy" class="action-button danger">
+        <i class="fas fa-broom"></i> 清除规则
+      </button>
+    </div>
+    
+    <!-- 规则表格 -->
+    <div class="rule-table-container">
+      <table id="ruleTable" class="rule-table">
+        <thead>
+          <tr>
+            <th style="width: 40px;">
+              <input type="checkbox" id="selectAll">
+            </th>
+            <th>匹配前</th>
+            <th>匹配后</th>
+            <th style="width: 60px;">应用</th>
+          </tr>
+        </thead>
+        <tbody id="ruleTableBody">
+          <!-- 动态生成的规则行 -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 版本采集功能区 -->
+  <div id="version-tab" class="tab-content">
+    <div class="setting-group">
+      <label class="input-label">服务版本采集</label>
+      <p class="setting-description">一键获取DevOps平台各服务指定分支的最新构建版本号（需在浏览器中已登录DevOps）</p>
+    </div>
+
+    <!-- 分支输入 -->
+    <div class="version-config">
+      <div class="config-row">
+        <label for="branchInput" class="config-label">分支名称:</label>
+        <input type="text" id="branchInput" class="version-input" placeholder="例如: feature_20260113_V1.1.48_1月送代">
+      </div>
+      <div class="config-row">
+        <label for="projectIdInput" class="config-label">项目ID:</label>
+        <input type="text" id="projectIdInput" class="version-input" placeholder="项目ID" value="bf219d24c8b290d30b50c961a4c8c78a">
+      </div>
+    </div>
+
+    <button id="collectVersionButton" class="action-button">
+      <i class="fas fa-search"></i> 开始采集
+    </button>
+
+    <!-- 服务列表 -->
+    <div class="version-services">
+      <label class="input-label">采集服务列表</label>
+      <div class="service-list" id="serviceList">
+        <!-- 服务列表将动态生成 -->
+      </div>
+    </div>
+
+    <!-- 结果区域 -->
+    <div class="result-area version-result-area">
+      <div id="versionResult" class="version-result">
+        <span class="result-placeholder">版本采集结果将在这里显示...</span>
+      </div>
+      <button id="copyVersionButton" class="copy-button" title="复制结果">
+        <i class="fas fa-copy"></i>
+      </button>
+      <div id="versionExecutionTime" class="execution-time"></div>
+    </div>
+  </div>
+
+  <!-- 底部状态栏 -->
+  <footer class="footer">
+    <div class="status">
+      <div id="statusIndicator" class="status-indicator"></div>
+      <span id="statusText">就绪</span>
+    </div>
+    <div class="right-footer">
+      <div class="operation-timer" id="operationTimer"></div>
+      <div class="version">v1.8.0</div>
+    </div>
+  </footer>
+  
+  <!-- 设置面板 -->
+  <div id="settingsPanel" class="settings-panel">
+    <div class="settings-content">
+      <h2 class="settings-title">设置</h2>
+      
+      <!-- 模型选择和管理区域 -->
+      <div class="setting-group">
+        <div class="model-header">
+          <label for="modelSelect" class="input-label">选择AI模型</label>
+          <button id="addModelBtn" class="add-model-button">
+            <i class="fas fa-plus"></i> 添加模型
+          </button>
+        </div>
+        <select id="modelSelect" class="model-select">
+          <!-- 模型选择下拉框将动态生成 -->
+        </select>
+      </div>
+      
+      <!-- 当前模型对应的API密钥 -->
+      <div class="setting-group" id="currentModelSettingsGroup">
+        <div class="model-key-header">
+          <label class="input-label">当前模型对应的API密钥</label>
+          <div class="current-model-name" id="currentModelName"></div>
+        </div>
+        
+        <!-- API密钥 -->
+        <div class="setting-field">
+          <label for="apiKeyInput" class="input-label">API密钥</label>
+          <input type="password" id="apiKeyInput" class="api-key-input" placeholder="请输入当前选择模型对应的API密钥">
+        </div>
+        
+        <!-- 接口地址 -->
+        <div class="setting-field">
+          <label for="baseUrlInput" class="input-label">接口地址</label>
+          <input type="text" id="baseUrlInput" class="api-url-input" placeholder="例如：https://api.openai.com/v1">
+          <button id="resetBaseUrlBtn" class="reset-button">重置为默认</button>
+        </div>
+        
+        <!-- 额外参数 -->
+        <div class="setting-field">
+          <div class="extra-params-header">
+            <label class="input-label">额外参数</label>
+            <button id="addParamBtn" class="add-param-button">添加参数</button>
+          </div>
+          <div id="extraParamsContainer" class="extra-params-container">
+            <!-- 额外参数将动态生成 -->
+          </div>
+        </div>
+        
+        <p class="setting-description">每个模型需要接入独立的API密钥和接口地址。切换模型后，将自动添加对应模型的API密钥和接口地址。</p>
+      </div>
+      
+      <div class="settings-actions">
+        <button id="cancelSettingsButton" class="cancel-button">取消</button>
+        <button id="saveSettingsButton" class="save-button">保存</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 添加模型面板 -->
+  <div id="addModelPanel" class="settings-panel">
+    <div class="panel-header">
+      <h3>添加自定义模型</h3>
+      <button id="cancelAddModelBtn" class="icon-button">
+        <span>✕</span>
+      </button>
+    </div>
+    <div class="panel-content">
+      <div class="setting-group">
+        <div class="setting-field">
+          <label for="newModelId" class="input-label">模型ID</label>
+          <input type="text" id="newModelId" class="api-key-input" placeholder="例如：qwen-turbo">
+          <p class="field-description">用于识别和存储此模型的唯一标识符</p>
+        </div>
+        
+        <div class="setting-field">
+          <label for="newModelName" class="input-label">模型名称</label>
+          <input type="text" id="newModelName" class="api-key-input" placeholder="例如：通义千问">
+          <p class="field-description">在下拉菜单中显示的名称</p>
+        </div>
+        
+        <div class="setting-field">
+          <label for="newModelBaseUrl" class="input-label">接口地址</label>
+          <input type="text" id="newModelBaseUrl" class="api-key-input" placeholder="例如：https://api.example.com/v1">
+          <p class="field-description">模型API的基础URL地址</p>
+        </div>
+        
+        <div class="setting-field">
+          <label for="newModelApiKey" class="input-label">API密钥</label>
+          <input type="password" id="newModelApiKey" class="api-key-input" placeholder="输入API密钥">
+          <p class="field-description">此模型的默认API密钥</p>
+        </div>
+      </div>
+      
+      <!-- 高级选项按钮 -->
+      <div class="setting-group">
+        <button id="showAdvancedOptionsBtn" class="text-button">显示高级选项</button>
+        
+        <!-- 高级选项部分 -->
+        <div id="advancedOptionsSection" class="advanced-options-section" style="display: none;">
+          <div class="setting-field checkbox-group">
+            <div class="checkbox-wrapper">
+              <input type="checkbox" id="includeModelIdCheckbox" checked>
+              <label for="includeModelIdCheckbox">在API请求中包含model字段</label>
+            </div>
+            <p class="field-description">某些API服务需要在请求中指定model参数才能正常工作</p>
+          </div>
+          
+          <div class="setting-field">
+            <label for="customModelIdValue" class="input-label">自定义model字段值</label>
+            <input type="text" id="customModelIdValue" class="api-key-input" placeholder="例如：gpt-3.5-turbo">
+            <p class="field-description">如不填写，将使用模型ID作为model字段值</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="settings-actions">
+        <button id="confirmAddModelBtn" class="save-button">添加模型</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 加载动画 -->
+  <div id="loadingContainer" class="loading-container">
+    <div class="astronaut-loader">
+      <span class="loading-icon">🚀</span>
+    </div>
+    <button id="cancelOperationBtn" class="cancel-loading-button">
+      <span>✕</span>
+      取消操作
+    </button>
+  </div>
+  
+  <!-- 脚本 -->
+  <script src="api-service.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html> 
