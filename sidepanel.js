@@ -519,6 +519,12 @@ function initializeComponents() {
   const summarizeResult = document.getElementById('summarizeResult');
   const copySummarizeButton = document.getElementById('copySummarizeButton');
   const summarizeExecutionTime = document.getElementById('summarizeExecutionTime');
+
+  // 飞书分享相关元素
+  const larkShareButton = document.getElementById('larkShareButton');
+  const larkResult = document.getElementById('larkResult');
+  const larkExecutionTime = document.getElementById('larkExecutionTime');
+  const larkWebhookInput = document.getElementById('larkWebhookInput');
   
   // 测试数据相关元素
   const dataCountInput = document.getElementById('dataCount');
@@ -899,21 +905,21 @@ function initializeComponents() {
     settingsPanel.classList.add('active');
     
     // 从存储中加载模型选择和配置
-    chrome.storage.local.get(['modelConfigs', 'model'], (result) => {
+    chrome.storage.local.get(['modelConfigs', 'model', 'larkWebhookUrl'], (result) => {
       // 初始化两个模型选择下拉框
       initializeModelSelects();
-      
+
       // 设置当前选中的模型
       if (result.model) {
         modelSelect.value = result.model;
         headerModelSelect.value = result.model;
-        
+
         // 显示当前选中的模型名称
         const selectedOption = modelSelect.options[modelSelect.selectedIndex];
         if (selectedOption) {
           currentModelName.textContent = selectedOption.text;
         }
-        
+
         // 加载当前选中模型的配置
         loadModelConfig(result.model);
       } else if (headerModelSelect.options.length > 0) {
@@ -922,6 +928,11 @@ function initializeComponents() {
         headerModelSelect.value = headerModelSelect.options[0].value;
         currentModelName.textContent = headerModelSelect.options[0].text;
         loadModelConfig(headerModelSelect.options[0].value);
+      }
+
+      // 加载飞书 Webhook 地址
+      if (result.larkWebhookUrl) {
+        larkWebhookInput.value = result.larkWebhookUrl;
       }
     });
   });
@@ -962,7 +973,21 @@ function initializeComponents() {
     
     // 同步头部模型选择器
     headerModelSelect.value = model;
-    
+
+    // 保存飞书 Webhook 地址
+    const webhookUrl = larkWebhookInput.value.trim();
+    if (webhookUrl) {
+      const webhookValidation = validateLarkWebhookUrl(webhookUrl);
+      if (!webhookValidation.valid) {
+        showError(webhookValidation.message);
+        return;
+      }
+      chrome.storage.local.set({ larkWebhookUrl: webhookUrl });
+    } else {
+      // 如果清空了输入框，也清除存储
+      chrome.storage.local.remove('larkWebhookUrl');
+    }
+
     settingsPanel.classList.remove('active');
     setStatus('ready', '设置已保存');
   });
@@ -1695,6 +1720,7 @@ function initializeComponents() {
   jsonExecutionTime.style.display = 'none';
   translateExecutionTime.style.display = 'none';
   summarizeExecutionTime.style.display = 'none';
+  larkExecutionTime.style.display = 'none';
   clearOperationTimer(); // 清除底部计时器
   
   // 添加模型选择变化事件
@@ -3052,6 +3078,187 @@ function initializeComponents() {
   });
 
   // ==================== 版本采集功能结束 ====================
+
+  // ==================== 飞书分享功能 ====================
+
+  // 验证飞书 Webhook URL 格式
+  const validateLarkWebhookUrl = (url) => {
+    if (!url || !url.trim()) {
+      return { valid: false, message: '请输入飞书 Webhook 地址' };
+    }
+    const pattern = /^https:\/\/open\.feishu\.cn\/open-apis\/bot\/v2\/hook\/[a-zA-Z0-9-]+$/;
+    if (!pattern.test(url.trim())) {
+      return { valid: false, message: '飞书 Webhook 地址格式不正确，应为 https://open.feishu.cn/open-apis/bot/v2/hook/...' };
+    }
+    return { valid: true, message: '' };
+  };
+
+  // 构建飞书卡片消息
+  const buildLarkCardMessage = (pageTitle, pageUrl, summaryContent) => {
+    return {
+      msg_type: 'interactive',
+      card: {
+        config: { wide_screen_mode: true },
+        header: {
+          title: { tag: 'plain_text', content: '📄 页面总结分享' },
+          template: 'blue'
+        },
+        elements: [
+          {
+            tag: 'markdown',
+            content: `**页面标题**: ${pageTitle}\n\n---\n\n${summaryContent}`
+          },
+          {
+            tag: 'action',
+            actions: [
+              {
+                tag: 'button',
+                text: { tag: 'plain_text', content: '查看原文' },
+                type: 'primary',
+                url: pageUrl
+              }
+            ]
+          }
+        ]
+      }
+    };
+  };
+
+  // 发送消息到飞书
+  const sendToLark = async (webhookUrl, cardMessage) => {
+    const errorMap = {
+      19001: 'Webhook 地址无效，请检查配置',
+      19002: '该机器人不允许 Webhook 调用',
+      19021: '发送太频繁，请稍后再试',
+      9499: '飞书服务繁忙，请稍后重试'
+    };
+
+    let response;
+    try {
+      response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cardMessage)
+      });
+    } catch (err) {
+      throw new Error('网络错误，请检查网络连接');
+    }
+
+    let data;
+    try {
+      data = await response.json();
+    } catch (err) {
+      throw new Error(`飞书返回异常响应 (HTTP ${response.status})`);
+    }
+
+    if (data.StatusCode !== 0 && data.code !== 0) {
+      const code = data.StatusCode || data.code;
+      const msg = errorMap[code] || data.StatusMessage || data.msg || '未知错误';
+      throw new Error(`发送失败: ${msg}`);
+    }
+
+    return data;
+  };
+
+  // 飞书分享按钮点击处理
+  larkShareButton.addEventListener('click', async () => {
+    // 防止重复点击或在其他操作进行中时点击
+    if (currentOperation) return;
+
+    // 1. 检查 Webhook 配置
+    const result = await new Promise(resolve => {
+      chrome.storage.local.get(['larkWebhookUrl'], resolve);
+    });
+    const webhookUrl = result.larkWebhookUrl;
+    if (!webhookUrl) {
+      showError('请先在设置中配置飞书 Webhook 地址');
+      return;
+    }
+
+    const startTime = Date.now();
+    currentOperation = 'lark-share';
+    larkExecutionTime.style.display = 'none';
+
+    try {
+      // 2. 获取当前标签页信息
+      setStatus('loading', '正在提取页面内容...');
+      const tabs = await new Promise(resolve => {
+        chrome.tabs.query({ active: true, currentWindow: true }, resolve);
+      });
+      if (!tabs || tabs.length === 0) {
+        throw new Error('无法获取当前标签页');
+      }
+      const tab = tabs[0];
+      const pageUrl = tab.url;
+      const pageTitle = tab.title || '无标题页面';
+
+      // 3. 提取页面内容
+      const pageContent = await new Promise((resolve, reject) => {
+        chrome.tabs.sendMessage(tab.id, { action: 'get_page_content' }, (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error('无法连接到页面，请刷新页面后重试'));
+            return;
+          }
+          // 等待内容通过消息回传
+          resolve(null);
+        });
+
+        // 监听内容脚本通过 runtime.sendMessage 回传的页面内容
+        const contentListener = (msg) => {
+          if (msg.from === 'content' && msg.action === 'summarize' && msg.isFullPage) {
+            chrome.runtime.onMessage.removeListener(contentListener);
+            resolve(msg.selectedText);
+          }
+        };
+        chrome.runtime.onMessage.addListener(contentListener);
+
+        // 超时处理
+        setTimeout(() => {
+          chrome.runtime.onMessage.removeListener(contentListener);
+          reject(new Error('页面内容提取超时，请刷新页面后重试'));
+        }, 10000);
+      });
+
+      if (currentOperation !== 'lark-share') return; // 已取消
+
+      // 4. 验证内容
+      if (!pageContent || pageContent.trim().length < 50) {
+        throw new Error('当前页面无可总结的文本内容');
+      }
+
+      // 5. AI 总结
+      setStatus('loading', '正在生成总结...');
+      const summaryResult = await deepSeekAPI.summarizeText(pageContent);
+
+      if (currentOperation !== 'lark-share') return; // 已取消
+
+      // 6. 发送到飞书
+      setStatus('loading', '正在发送到飞书...');
+      const cardMessage = buildLarkCardMessage(pageTitle, pageUrl, summaryResult.content);
+      await sendToLark(webhookUrl, cardMessage);
+
+      // 7. 成功
+      const totalTime = (Date.now() - startTime) / 1000;
+      larkResult.innerHTML = '<div class="summary-result"><p>✅ 已成功发送到飞书群聊</p></div>';
+      displayExecutionTime(larkExecutionTime, totalTime);
+      setStatus('ready', '发送成功');
+    } catch (error) {
+      console.error('飞书分享失败:', error);
+      if (error.message === '操作已取消') {
+        setStatus('ready', '操作已取消');
+        larkResult.innerHTML = '<span class="result-placeholder">操作已取消</span>';
+      } else {
+        showError(`飞书分享失败: ${error.message}`);
+        larkResult.innerHTML = `<span class="result-placeholder">发送失败: ${error.message}</span>`;
+      }
+      larkExecutionTime.style.display = 'none';
+    } finally {
+      currentOperation = null;
+      clearOperationTimer();
+    }
+  });
+
+  // ==================== 飞书分享功能结束 ====================
 
   // 启动定期保存和输入监听
   startPeriodicSave();

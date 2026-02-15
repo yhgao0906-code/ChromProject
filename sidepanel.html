@@ -54,6 +54,7 @@
     <button class="tab-button" data-tab="md2word-tab">MD转Word</button>
     <button class="tab-button" data-tab="proxy-tab">代理</button>
     <button class="tab-button" data-tab="version-tab">版本采集</button>
+    <button class="tab-button" data-tab="lark-tab">飞书分享</button>
   </div>
   
   <!-- 转JSON功能区 -->
@@ -367,6 +368,23 @@
     </div>
   </div>
 
+  <!-- 飞书分享功能区 -->
+  <div id="lark-tab" class="tab-content">
+    <div class="setting-group">
+      <label class="input-label">页面总结分享到飞书</label>
+      <p class="setting-description">一键提取当前页面内容，AI生成摘要总结，并通过飞书机器人发送卡片消息到群聊</p>
+    </div>
+
+    <button id="larkShareButton" class="action-button">总结并发送</button>
+
+    <div class="result-area">
+      <div id="larkResult">
+        <span class="result-placeholder">点击按钮总结当前页面并发送到飞书群...</span>
+      </div>
+      <div id="larkExecutionTime" class="execution-time"></div>
+    </div>
+  </div>
+
   <!-- 底部状态栏 -->
   <footer class="footer">
     <div class="status">
@@ -375,7 +393,7 @@
     </div>
     <div class="right-footer">
       <div class="operation-timer" id="operationTimer"></div>
-      <div class="version">v1.8.0</div>
+      <div class="version">v1.9.0</div>
     </div>
   </footer>
   
@@ -430,7 +448,14 @@
         
         <p class="setting-description">每个模型需要接入独立的API密钥和接口地址。切换模型后，将自动添加对应模型的API密钥和接口地址。</p>
       </div>
-      
+
+      <!-- 飞书 Webhook 配置 -->
+      <div class="setting-group">
+        <label for="larkWebhookInput" class="input-label">飞书 Webhook 地址</label>
+        <input type="text" id="larkWebhookInput" class="api-url-input" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/...">
+        <p class="setting-description">飞书群聊自定义机器人的 Webhook 地址，用于"飞书分享"功能发送消息</p>
+      </div>
+
       <div class="settings-actions">
         <button id="cancelSettingsButton" class="cancel-button">取消</button>
         <button id="saveSettingsButton" class="save-button">保存</button>

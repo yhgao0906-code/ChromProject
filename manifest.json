@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "宇航工具箱",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "一个多功能Chrome工具箱，支持JSON转换、文本翻译、内容总结和测试数据生成",
   "action": {
     "default_title": "打开宇航工具箱侧边栏",

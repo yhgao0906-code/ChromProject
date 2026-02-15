@@ -72,3 +72,10 @@ All vendored and minified: `docx.min.js` (Word generation), `marked.min.js` (Mar
 - Features that can run locally (MD-to-Word, test data generation) must not make network calls.
 - No inline scripts in extension pages (CSP enforced).
 - Version in `manifest.json` is the single source of truth; bump it (semver) before packaging user-facing changes.
+
+## Active Technologies
+- Vanilla JavaScript (ES2020+), Chrome Manifest V3 + Chrome Extensions API (sidePanel, tabs, storage, runtime), DeepSeekAPI (api-service.js), 飞书 Webhook API (001-page-summary-lark)
+- `chrome.storage.local` (Webhook URL 配置持久化) (001-page-summary-lark)
+
+## Recent Changes
+- 001-page-summary-lark: Added Vanilla JavaScript (ES2020+), Chrome Manifest V3 + Chrome Extensions API (sidePanel, tabs, storage, runtime), DeepSeekAPI (api-service.js), 飞书 Webhook API
